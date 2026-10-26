@@ -1,0 +1,393 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Identificação Segura do Paciente</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #0f4c75 0%, #1b262c 100%);
+    min-height: 100vh; color: #222; line-height: 1.5;
+  }
+  .floating-icons {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0; overflow: hidden;
+  }
+  .floating-icons span { position: absolute; font-size: 28px; opacity: 0.08; }
+  .floating-icons span:nth-child(1) { top: 10%; left: 5%; }
+  .floating-icons span:nth-child(2) { top: 25%; right: 8%; }
+  .floating-icons span:nth-child(3) { top: 50%; left: 12%; }
+  .floating-icons span:nth-child(4) { top: 70%; right: 15%; }
+  .floating-icons span:nth-child(5) { bottom: 10%; left: 30%; }
+  .floating-icons span:nth-child(6) { top: 40%; right: 40%; }
+  .container {
+    max-width: 640px; margin: 0 auto; padding: 20px;
+    position: relative; z-index: 1;
+  }
+  .card {
+    background: #fff; border-radius: 16px;
+    padding: 32px 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .hospital-name {
+    text-align: center; color: #0f4c75; font-size: 13px;
+    font-weight: 600; letter-spacing: 0.03em; margin-bottom: 8px;
+  }
+  .quiz-icon { text-align: center; font-size: 48px; margin-bottom: 12px; }
+  .quiz-title {
+    text-align: center; font-size: 22px; font-weight: 700;
+    color: #1b262c; margin-bottom: 4px;
+  }
+  .quiz-subtitle {
+    text-align: center; font-size: 14px; color: #666; margin-bottom: 20px;
+  }
+  .quiz-meta {
+    text-align: center; background: #e8f4f8; border-radius: 8px;
+    padding: 8px 16px; font-size: 13px; color: #0f4c75;
+    margin-bottom: 24px; font-weight: 500;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: #444; margin-bottom: 6px;
+  }
+  .form-group input, .form-group select {
+    width: 100%; padding: 12px 14px; border: 2px solid #e0e0e0;
+    border-radius: 10px; font-size: 15px; font-family: inherit;
+    transition: border-color 0.2s; background: #fafafa;
+    -webkit-appearance: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none; border-color: #0f4c75; background: #fff;
+  }
+  .btn-primary {
+    width: 100%; padding: 14px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, #0f4c75, #3282b8);
+    color: #fff; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    letter-spacing: 0.03em; margin-top: 8px;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(15,76,117,0.3); }
+  .btn-hint { text-align: center; font-size: 12px; color: #999; margin-top: 8px; }
+  .progress-bar {
+    background: #e8f4f8; border-radius: 8px; height: 8px;
+    margin-bottom: 20px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #0f4c75, #3282b8);
+    border-radius: 8px; transition: width 0.4s ease;
+  }
+  .question-counter {
+    text-align: center; font-size: 13px; color: #888; margin-bottom: 12px;
+  }
+  .question-text {
+    font-size: 17px; font-weight: 600; color: #1b262c;
+    margin-bottom: 20px; line-height: 1.5;
+  }
+  .options-list { list-style: none; }
+  .options-list li {
+    padding: 14px 16px; border: 2px solid #e8e8e8;
+    border-radius: 12px; margin-bottom: 10px; cursor: pointer;
+    font-size: 15px; transition: all 0.2s;
+  }
+  .options-list li:hover { border-color: #3282b8; background: #f0f8ff; }
+  .options-list li.correct { border-color: #15803d; background: #dcfce7; }
+  .options-list li.wrong { border-color: #dc2626; background: #fee2e2; }
+  .options-list li.disabled { pointer-events: none; }
+  .feedback-box {
+    margin-top: 16px; padding: 14px; border-radius: 10px;
+    font-size: 14px; display: none;
+  }
+  .feedback-box.show { display: block; }
+  .feedback-box.correct-fb { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .feedback-box.wrong-fb { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+  .result-circle {
+    width: 140px; height: 140px; border-radius: 50%;
+    margin: 0 auto 20px; display: flex; align-items: center;
+    justify-content: center; flex-direction: column;
+    border: 6px solid #0f4c75;
+  }
+  .result-circle .score { font-size: 36px; font-weight: 700; color: #0f4c75; font-family: monospace; }
+  .result-circle .label { font-size: 12px; color: #666; }
+  .result-msg { text-align: center; font-size: 18px; font-weight: 600; color: #1b262c; margin-bottom: 8px; }
+  .result-detail { text-align: center; font-size: 14px; color: #666; margin-bottom: 24px; }
+  .review-section { margin-top: 24px; }
+  .review-title { font-size: 15px; font-weight: 700; color: #444; margin-bottom: 12px; }
+  .review-item {
+    padding: 12px; border-radius: 10px; margin-bottom: 10px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .review-item.rev-correct { background: #f0fdf4; border-left: 4px solid #15803d; }
+  .review-item.rev-wrong { background: #fef2f2; border-left: 4px solid #dc2626; }
+  .review-item .rev-q { font-weight: 600; color: #333; margin-bottom: 4px; }
+  .review-item .rev-a { color: #666; }
+  .sending-status {
+    text-align: center; font-size: 13px; padding: 8px;
+    border-radius: 8px; margin-top: 12px; display: none;
+  }
+  .sending-status.sending { display: block; background: #e0f0ff; color: #0f4c75; }
+  .sending-status.sent { display: block; background: #dcfce7; color: #15803d; }
+  .sending-status.error { display: block; background: #fee2e2; color: #dc2626; }
+  .footer {
+    text-align: center; padding: 20px; font-size: 11px;
+    color: rgba(255,255,255,0.4);
+  }
+</style>
+</head>
+<body>
+
+<div class="floating-icons">
+  <span>💊</span><span>🏥</span><span>✅</span>
+  <span>🔒</span><span>💉</span><span>🩺</span>
+</div>
+
+<div class="container">
+
+  <!-- TELA INICIAL -->
+  <div class="screen active" id="startScreen">
+    <div class="card">
+      <div class="hospital-name">🏥 Hospital Delphina Rinaldi Abdel Aziz</div>
+      <div class="quiz-icon">💊</div>
+      <div class="quiz-title">Quiz da Identificação Segura</div>
+      <div class="quiz-subtitle">Teste seus conhecimentos sobre a Meta 01</div>
+      <div class="quiz-meta">🎯 10 perguntas • Toque para responder</div>
+
+      <div class="form-group">
+        <label>Seu nome (ou matrícula):</label>
+        <input type="text" id="playerName" placeholder="Digite seu nome">
+      </div>
+      <div class="form-group">
+        <label>Setor:</label>
+        <select id="playerSetor">
+          <option value="">Selecione seu setor</option>
+          <option>UTI A</option><option>UTI B</option><option>UTI C</option>
+          <option>UTI D</option><option>UTI H</option><option>UTI 20</option>
+          <option>UTI 30</option><option>2º Andar A</option><option>2º Andar B</option>
+          <option>3º Andar A</option><option>3º Andar B</option><option>4º Andar A</option>
+          <option>4º Andar B</option><option>5º Andar A</option><option>5º Andar B</option>
+          <option>6º Andar</option><option>Hiperbárica</option><option>Centro Cirúrgico</option>
+          <option>SADT</option><option>Reabilitação</option><option>Ambulatório</option>
+          <option>Transplante</option><option>SVP</option><option>SVA</option>
+          <option>AGT</option><option>Laboratório</option><option>NQSP</option>
+          <option>SCIH</option><option>Administrativo</option><option>Hospital Dia</option>
+          <option>Farmácia</option><option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Categoria profissional:</label>
+        <select id="playerCategoria">
+          <option value="">Selecione sua categoria</option>
+          <option>Enfermeiro(a)</option><option>Técnico(a) de Enfermagem</option>
+          <option>Médico(a)</option><option>Fisioterapeuta</option>
+          <option>Biomédico(a)</option><option>Nutricionista</option>
+          <option>Fonoaudiólogo(a)</option><option>Assistente Administrativo</option>
+          <option>Escriturário(a)</option><option>Farmacêutico(a)</option>
+          <option>Assistente Social</option><option>Psicólogo(a)</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Turno:</label>
+        <select id="playerTurno">
+          <option value="">Selecione seu turno</option>
+          <option>Diurno</option><option>Noturno</option>
+        </select>
+      </div>
+
+      <button class="btn-primary" onclick="startQuiz()">INICIAR QUIZ</button>
+      <div class="btn-hint">👆 Preencha os campos e toque em INICIAR</div>
+    </div>
+  </div>
+
+  <!-- TELA DE PERGUNTAS -->
+  <div class="screen" id="questionScreen">
+    <div class="card">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="question-counter" id="questionCounter"></div>
+      <div class="question-text" id="questionText"></div>
+      <ul class="options-list" id="optionsList"></ul>
+      <div class="feedback-box" id="feedbackBox"></div>
+      <button class="btn-primary" id="nextBtn" onclick="nextQuestion()" style="display:none;">PRÓXIMA ➜</button>
+    </div>
+  </div>
+
+  <!-- TELA DE RESULTADO -->
+  <div class="screen" id="resultScreen">
+    <div class="card">
+      <div class="result-circle">
+        <div class="score" id="resultScore"></div>
+        <div class="label">acertos</div>
+      </div>
+      <div class="result-msg" id="resultMsg"></div>
+      <div class="result-detail" id="resultDetail"></div>
+      <div class="sending-status" id="sendingStatus"></div>
+
+      <div class="review-section">
+        <div class="review-title">📋 Revisão das Respostas</div>
+        <div id="reviewList"></div>
+      </div>
+
+      <button class="btn-primary" onclick="playAgain()" style="margin-top:20px;">🔄 JOGAR NOVAMENTE</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Hospital Delphina Rinaldi Abdel Aziz | Identificação Segura | NQSP</div>
+
+<script>
+  // =============================================
+  // COLE AQUI SUA URL DO GOOGLE APPS SCRIPT
+  // =============================================
+  var SCRIPT_URL = "COLE_SUA_URL_AQUI";
+  // =============================================
+
+  var allQuestions = [
+    { q: "Quais são os identificadores padronizados do paciente segundo o protocolo?", options: ["Nome completo e número do prontuário", "Nome completo e data de nascimento", "Nome e número do leito", "CPF e nome da mãe"], correct: 1, explanation: "Os identificadores padronizados são: nome completo e data de nascimento. O número do leito NUNCA deve ser usado como identificador." },
+    { q: "Em qual momento a identificação do paciente deve ser verificada?", options: ["Apenas na admissão", "Antes de qualquer procedimento, medicação ou coleta", "Somente antes de cirurgias", "Apenas quando solicitado pelo médico"], correct: 1, explanation: "A identificação deve ser verificada antes de QUALQUER cuidado: administração de medicamentos, coleta de exames, procedimentos, transfusões, etc." },
+    { q: "O número do leito pode ser usado como identificador do paciente?", options: ["Sim, é prático e rápido", "Sim, desde que confirmado com o paciente", "Não, nunca deve ser usado como identificador", "Sim, em situações de emergência"], correct: 2, explanation: "O número do leito NUNCA deve ser usado como identificador, pois o paciente pode ser transferido de leito a qualquer momento." },
+    { q: "Qual é a forma correta de confirmar a identidade do paciente?", options: ["Perguntar: 'Você é o João?'", "Pedir que o paciente diga seu nome completo e data de nascimento", "Verificar apenas a pulseira", "Confirmar com o acompanhante"], correct: 1, explanation: "O correto é pedir que o PRÓPRIO paciente diga seu nome completo e data de nascimento (pergunta aberta), nunca perguntar de forma induzida." },
+    { q: "Quando a pulseira de identificação deve ser colocada no paciente?", options: ["Após a primeira consulta médica", "No momento da admissão hospitalar", "Antes da alta", "Apenas em pacientes cirúrgicos"], correct: 1, explanation: "A pulseira deve ser colocada no momento da admissão, sendo o primeiro passo para garantir a identificação segura durante toda a internação." },
+    { q: "O que fazer se a pulseira de identificação estiver danificada ou ilegível?", options: ["Escrever por cima com caneta", "Substituir imediatamente por uma nova", "Ignorar, pois o paciente já é conhecido", "Aguardar a troca no próximo turno"], correct: 1, explanation: "A pulseira deve ser substituída IMEDIATAMENTE quando estiver danificada, ilegível ou com informações incorretas." },
+    { q: "Em pacientes inconscientes ou incapazes de se identificar, como proceder?", options: ["Usar o número do leito", "Verificar a pulseira e confirmar com prontuário", "Perguntar ao colega de quarto", "Aguardar o paciente acordar"], correct: 1, explanation: "Em pacientes que não podem se identificar verbalmente, deve-se verificar a pulseira e conferir com o prontuário/documentação." },
+    { q: "A identificação segura do paciente é responsabilidade de quem?", options: ["Apenas da enfermagem", "Apenas do médico responsável", "De todos os profissionais de saúde", "Apenas da recepção"], correct: 2, explanation: "A identificação segura é responsabilidade de TODOS os profissionais de saúde que prestam cuidado ao paciente." },
+    { q: "Qual é o principal objetivo da Meta 01 de Segurança do Paciente?", options: ["Reduzir custos hospitalares", "Identificar corretamente o paciente", "Agilizar o atendimento", "Reduzir o tempo de internação"], correct: 1, explanation: "A Meta 01 tem como principal objetivo identificar corretamente o paciente para evitar erros e eventos adversos." },
+    { q: "Antes de administrar um medicamento, o profissional deve:", options: ["Confirmar apenas o nome do medicamento", "Verificar a identificação do paciente com pelo menos dois identificadores", "Perguntar ao acompanhante o nome do paciente", "Verificar apenas o número do leito"], correct: 1, explanation: "Antes de administrar qualquer medicamento, deve-se verificar a identificação com pelo menos DOIS identificadores (nome completo e data de nascimento)." }
+  ];
+
+  var currentQuestions = [];
+  var currentIndex = 0;
+  var score = 0;
+  var answers = [];
+
+  function showScreen(id) {
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function startQuiz() {
+    var name = document.getElementById('playerName').value.trim();
+    var setor = document.getElementById('playerSetor').value;
+    var cat = document.getElementById('playerCategoria').value;
+    var turno = document.getElementById('playerTurno').value;
+    if (!name || !setor || !cat || !turno) { alert('Por favor, preencha todos os campos!'); return; }
+    currentQuestions = allQuestions.slice();
+    currentIndex = 0; score = 0; answers = [];
+    showScreen('questionScreen');
+    renderQuestion();
+  }
+
+  function renderQuestion() {
+    var q = currentQuestions[currentIndex];
+    var total = currentQuestions.length;
+    document.getElementById('progressFill').style.width = ((currentIndex / total) * 100) + '%';
+    document.getElementById('questionCounter').textContent = 'Pergunta ' + (currentIndex + 1) + ' de ' + total;
+    document.getElementById('questionText').textContent = q.q;
+    document.getElementById('feedbackBox').className = 'feedback-box';
+    document.getElementById('feedbackBox').textContent = '';
+    document.getElementById('nextBtn').style.display = 'none';
+    var list = document.getElementById('optionsList');
+    list.innerHTML = '';
+    for (var i = 0; i < q.options.length; i++) {
+      var li = document.createElement('li');
+      li.textContent = q.options[i];
+      li.setAttribute('data-idx', i);
+      li.onclick = function() { selectOption(parseInt(this.getAttribute('data-idx'))); };
+      list.appendChild(li);
+    }
+  }
+
+  function selectOption(idx) {
+    var q = currentQuestions[currentIndex];
+    var items = document.querySelectorAll('#optionsList li');
+    for (var i = 0; i < items.length; i++) items[i].classList.add('disabled');
+    var fb = document.getElementById('feedbackBox');
+    if (idx === q.correct) {
+      items[idx].classList.add('correct');
+      fb.className = 'feedback-box correct-fb show';
+      fb.textContent = '✅ Correto! ' + q.explanation;
+      score++;
+      answers.push({ q: q.q, correct: true, given: q.options[idx], right: q.options[q.correct] });
+    } else {
+      items[idx].classList.add('wrong');
+      items[q.correct].classList.add('correct');
+      fb.className = 'feedback-box wrong-fb show';
+      fb.textContent = '❌ Incorreto. ' + q.explanation;
+      answers.push({ q: q.q, correct: false, given: q.options[idx], right: q.options[q.correct] });
+    }
+    document.getElementById('nextBtn').style.display = 'block';
+  }
+
+  function nextQuestion() {
+    currentIndex++;
+    if (currentIndex < currentQuestions.length) renderQuestion();
+    else showResult();
+  }
+
+  function showResult() {
+    var total = currentQuestions.length;
+    var pct = Math.round((score / total) * 100);
+    document.getElementById('resultScore').textContent = score + '/' + total;
+    var msg, detail;
+    if (pct === 100) { msg = '🏆 Excelente!'; detail = 'Você acertou todas as perguntas!'; }
+    else if (pct >= 80) { msg = '👏 Muito bom!'; detail = 'Ótimo conhecimento sobre identificação segura!'; }
+    else if (pct >= 60) { msg = '📚 Bom trabalho!'; detail = 'Revise alguns pontos para melhorar ainda mais.'; }
+    else { msg = '💪 Continue estudando!'; detail = 'Revise o protocolo de identificação segura.'; }
+    document.getElementById('resultMsg').textContent = msg;
+    document.getElementById('resultDetail').textContent = detail + ' (' + pct + '%)';
+    var reviewList = document.getElementById('reviewList');
+    reviewList.innerHTML = '';
+    for (var i = 0; i < answers.length; i++) {
+      var a = answers[i];
+      var div = document.createElement('div');
+      div.className = 'review-item ' + (a.correct ? 'rev-correct' : 'rev-wrong');
+      div.innerHTML = '<div class="rev-q">' + (i + 1) + '. ' + a.q + '</div><div class="rev-a">' + (a.correct ? '✅ ' + a.right : '❌ Sua resposta: ' + a.given + '<br>✅ Correta: ' + a.right) + '</div>';
+      reviewList.appendChild(div);
+    }
+    showScreen('resultScreen');
+    sendToGoogleSheets(pct);
+  }
+
+  function sendToGoogleSheets(pct) {
+    var status = document.getElementById('sendingStatus');
+    status.className = 'sending-status sending';
+    status.textContent = '📤 Enviando resultados...';
+    var detailStr = '';
+    for (var i = 0; i < answers.length; i++) {
+      detailStr += (i + 1) + '. ' + (answers[i].correct ? '✅' : '❌') + ' ' + answers[i].q;
+      if (i < answers.length - 1) detailStr += ' | ';
+    }
+    var payload = {
+      timestamp: new Date().toLocaleString('pt-BR'),
+      nome: document.getElementById('playerName').value.trim(),
+      setor: document.getElementById('playerSetor').value,
+      categoria: document.getElementById('playerCategoria').value,
+      turno: document.getElementById('playerTurno').value,
+      acertos: score, total: currentQuestions.length,
+      percentual: pct, detalhes: detailStr
+    };
+    fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function() {
+      status.className = 'sending-status sent';
+      status.textContent = '✅ Resultados enviados com sucesso!';
+    }).catch(function() {
+      status.className = 'sending-status error';
+      status.textContent = '⚠️ Erro ao enviar. Tente novamente mais tarde.';
+    });
+  }
+
+  function playAgain() {
+    document.getElementById('playerName').value = '';
+    showScreen('startScreen');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Indicadores — Identificação Segura</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #0f4c75 0%, #1b262c 100%);
+    min-height: 100vh; color: #222; line-height: 1.5;
+  }
+  .container {
+    max-width: 800px; margin: 0 auto; padding: 20px;
+  }
+
+  /* LOGIN */
+  .login-card {
+    background: #fff; border-radius: 16px; padding: 40px 32px;
+    max-width: 400px; margin: 80px auto; text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .login-card h2 { font-size: 22px; color: #1b262c; margin-bottom: 8px; }
+  .login-card p { font-size: 14px; color: #666; margin-bottom: 24px; }
+  .login-card input {
+    width: 100%; padding: 14px; border: 2px solid #e0e0e0;
+    border-radius: 10px; font-size: 16px; text-align: center;
+    margin-bottom: 12px; font-family: inherit;
+  }
+  .login-card input:focus { outline: none; border-color: #0f4c75; }
+  .login-error { color: #dc2626; font-size: 13px; display: none; margin-bottom: 12px; }
+  .btn-login {
+    width: 100%; padding: 14px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, #0f4c75, #3282b8);
+    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .btn-login:hover { box-shadow: 0 4px 16px rgba(15,76,117,0.3); }
+
+  /* PANEL */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .panel-header {
+    background: linear-gradient(135deg, #0f4c75, #1b262c);
+    color: #fff; padding: 24px; border-radius: 16px 16px 0 0;
+  }
+  .panel-header h2 { font-size: 20px; margin-bottom: 4px; }
+  .panel-header p { font-size: 12px; opacity: 0.7; margin-bottom: 16px; }
+  .panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .panel-actions button {
+    padding: 8px 16px; border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px; background: rgba(255,255,255,0.1);
+    color: #fff; font-size: 12px; cursor: pointer; font-family: inherit;
+    font-weight: 500;
+  }
+  .panel-actions button:hover { background: rgba(255,255,255,0.2); }
+
+  .panel-body {
+    background: #fff; padding: 24px; border-radius: 0 0 16px 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: #f8fafc; border-radius: 12px; padding: 20px;
+    text-align: center; border: 1px solid #eee;
+  }
+  .stat-card .stat-value { font-size: 32px; font-weight: 700; color: #0f4c75; font-family: monospace; }
+  .stat-card .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+
+  .chart-section { margin-bottom: 28px; }
+  .chart-section h3 { font-size: 15px; color: #333; margin-bottom: 12px; font-weight: 600; }
+  .bar-chart { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { font-size: 12px; color: #555; min-width: 120px; text-align: right; }
+  .bar-track { flex: 1; background: #eee; border-radius: 6px; height: 26px; overflow: hidden; }
+  .bar-fill {
+    height: 100%; border-radius: 6px;
+    background: linear-gradient(90deg, #0f4c75, #3282b8);
+    display: flex; align-items: center; padding-left: 10px;
+    transition: width 0.6s ease;
+  }
+  .bar-fill span { font-size: 11px; color: #fff; font-weight: 600; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th {
+    text-align: left; color: #666; font-weight: 600; padding: 10px 8px;
+    border-bottom: 2px solid #ddd; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .data-table td { padding: 10px 8px; color: #333; border-bottom: 1px solid #eee; }
+  .data-table tr:hover td { background: #f5f8ff; }
+
+  .loading-msg {
+    text-align: center; padding: 40px; color: #888; font-size: 14px;
+  }
+
+  .last-update {
+    text-align: center; font-size: 11px; color: #aaa; margin-top: 16px;
+  }
+
+  .footer {
+    text-align: center; padding: 20px; font-size: 11px;
+    color: rgba(255,255,255,0.4);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- TELA DE LOGIN -->
+  <div class="screen active" id="loginScreen">
+    <div class="login-card">
+      <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+      <h2>Painel de Indicadores</h2>
+      <p>Hospital Delphina Rinaldi Abdel Aziz — NQSP</p>
+      <input type="password" id="loginPassword" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="login-error" id="loginError">❌ Senha incorreta</div>
+      <button class="btn-login" onclick="doLogin()">ENTRAR</button>
+    </div>
+  </div>
+
+  <!-- TELA DO PAINEL -->
+  <div class="screen" id="panelScreen">
+    <div class="panel-header">
+      <h2>📊 Painel de Indicadores — Identificação Segura</h2>
+      <p>Hospital Delphina Rinaldi Abdel Aziz — NQSP</p>
+      <div class="panel-actions">
+        <button onclick="loadData()">🔄 Atualizar em Tempo Real</button>
+        <button onclick="exportCSV()">📥 Exportar CSV</button>
+        <button onclick="toggleAutoRefresh()">⏱️ Auto-Atualizar (30s)</button>
+        <button onclick="location.reload()">🚪 Sair</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div id="panelContent"><div class="loading-msg">⏳ Carregando dados...</div></div>
+      <div class="last-update" id="lastUpdate"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">Hospital Delphina Rinaldi Abdel Aziz | Painel Administrativo | NQSP</div>
+
+<script>
+  // =============================================
+  // CONFIGURAÇÕES — ALTERE AQUI
+  // =============================================
+  var SCRIPT_URL = "COLE_SUA_URL_AQUI";
+  var ADMIN_PASS = "DEFINA_SUA_SENHA_AQUI";
+  // =============================================
+
+  var allResults = [];
+  var autoRefreshTimer = null;
+  var autoRefreshOn = false;
+
+  function showScreen(id) {
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+    document.getElementById(id).classList.add('active');
+  }
+
+  function doLogin() {
+    var pwd = document.getElementById('loginPassword').value;
+    if (pwd === ADMIN_PASS) {
+      showScreen('panelScreen');
+      loadData();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+
+  function loadData() {
+    document.getElementById('panelContent').innerHTML = '<div class="loading-msg">⏳ Carregando dados do Google Sheets...</div>';
+
+    fetch(SCRIPT_URL)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        allResults = data;
+        renderPanel();
+        document.getElementById('lastUpdate').textContent = '🕐 Última atualização: ' + new Date().toLocaleString('pt-BR');
+      })
+      .catch(function() {
+        document.getElementById('panelContent').innerHTML = '<div class="loading-msg">⚠️ Erro ao carregar dados. Verifique a URL do Apps Script.</div>';
+      });
+  }
+
+  function toggleAutoRefresh() {
+    if (autoRefreshOn) {
+      clearInterval(autoRefreshTimer);
+      autoRefreshOn = false;
+      alert('Auto-atualização desativada.');
+    } else {
+      autoRefreshTimer = setInterval(loadData, 30000);
+      autoRefreshOn = true;
+      alert('Auto-atualização ativada! Os dados serão atualizados a cada 30 segundos.');
+    }
+  }
+
+  function renderPanel() {
+    var total = allResults.length;
+    var sum = 0; var perfect = 0; var below60 = 0;
+    for (var i = 0; i < allResults.length; i++) {
+      var p = Number(allResults[i].percentual);
+      sum += p;
+      if (p === 100) perfect++;
+      if (p < 60) below60++;
+    }
+    var avg = total > 0 ? Math.round(sum / total) : 0;
+
+    var html = '';
+
+    // Stats
+    html += '<div class="stats-grid">';
+    html += '<div class="stat-card"><div class="stat-value">' + total + '</div><div class="stat-label">Total Participações</div></div>';
+    html += '<div class="stat-card"><div class="stat-value">' + avg + '%</div><div class="stat-label">Média Geral</div></div>';
+    html += '<div class="stat-card"><div class="stat-value">' + perfect + '</div><div class="stat-label">Nota Máxima (100%)</div></div>';
+    html += '<div class="stat-card"><div class="stat-value">' + below60 + '</div><div class="stat-label">Abaixo de 60%</div></div>';
+    html += '</div>';
+
+    // Contagens
+    var setorCount = {}, catCount = {}, turnoCount = {};
+    var setorScore = {}, catScore = {};
+    for (var i = 0; i < allResults.length; i++) {
+      var r = allResults[i];
+      setorCount[r.setor] = (setorCount[r.setor] || 0) + 1;
+      catCount[r.categoria] = (catCount[r.categoria] || 0) + 1;
+      turnoCount[r.turno] = (turnoCount[r.turno] || 0) + 1;
+      setorScore[r.setor] = (setorScore[r.setor] || 0) + Number(r.percentual);
+      catScore[r.categoria] = (catScore[r.categoria] || 0) + Number(r.percentual);
+    }
+
+    // Setor
+    html += '<div class="chart-section"><h3>🏥 Participação por Setor</h3><div class="bar-chart">';
+    var setorArr = [];
+    for (var k in setorCount) setorArr.push([k, setorCount[k], Math.round(setorScore[k] / setorCount[k])]);
+    setorArr.sort(function(a, b) { return b[1] - a[1]; });
+    var maxS = setorArr.length > 0 ? setorArr[0][1] : 1;
+    for (var i = 0; i < setorArr.length; i++) {
+      var w = Math.round((setorArr[i][1] / maxS) * 100);
+      html += '<div class="bar-row"><div class="bar-label">' + setorArr[i][0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%"><span>' + setorArr[i][1] + ' (' + setorArr[i][2] + '% média)</span></div></div></div>';
+    }
+    html += '</div></div>';
+
+    // Categoria
+    html += '<div class="chart-section"><h3>👥 Participação por Categoria Profissional</h3><div class="bar-chart">';
+    var catArr = [];
+    for (var k in catCount) catArr.push([k, catCount[k], Math.round(catScore[k] / catCount[k])]);
+    catArr.sort(function(a, b) { return b[1] - a[1]; });
+    var maxC = catArr.length > 0 ? catArr[0][1] : 1;
+    for (var i = 0; i < catArr.length; i++) {
+      var w = Math.round((catArr[i][1] / maxC) * 100);
+      html += '<div class="bar-row"><div class="bar-label">' + catArr[i][0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%"><span>' + catArr[i][1] + ' (' + catArr[i][2] + '% média)</span></div></div></div>';
+    }
+    html += '</div></div>';
+
+    // Turno
+    html += '<div class="chart-section"><h3>🌙 Participação por Turno</h3><div class="bar-chart">';
+    var turnoArr = [];
+    var maxT = 1;
+    for (var k in turnoCount) { turnoArr.push([k, turnoCount[k]]); if (turnoCount[k] > maxT) maxT = turnoCount[k]; }
+    for (var i = 0; i < turnoArr.length; i++) {
+      var w = Math.round((turnoArr[i][1] / maxT) * 100);
+      html += '<div class="bar-row"><div class="bar-label">' + turnoArr[i][0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%"><span>' + turnoArr[i][1] + '</span></div></div></div>';
+    }
+    html += '</div></div>';
+
+    // Tabela
+    html += '<div class="chart-section"><h3>📋 Todas as Participações</h3><div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
+    html += '<th>Data/Hora</th><th>Nome</th><th>Setor</th><th>Categoria</th><th>Turno</th><th>Acertos</th><th>%</th>';
+    html += '</tr></thead><tbody>';
+    var reversed = allResults.slice().reverse();
+    for (var i = 0; i < reversed.length; i++) {
+      var r = reversed[i];
+      var rowColor = Number(r.percentual) < 60 ? ' style="background:#fef2f2;"' : (Number(r.percentual) === 100 ? ' style="background:#f0fdf4;"' : '');
+      html += '<tr' + rowColor + '><td>' + (r.timestamp || '-') + '</td><td>' + (r.nome || '-') + '</td><td>' + (r.setor || '-') + '</td>';
+      html += '<td>' + (r.categoria || '-') + '</td><td>' + (r.turno || '-') + '</td><td>' + r.acertos + '/' + r.total + '</td><td>' + r.percentual + '%</td></tr>';
+    }
+    html += '</tbody></table></div></div>';
+
+    document.getElementById('panelContent').innerHTML = html;
+  }
+
+  function exportCSV() {
+    if (allResults.length === 0) { alert('Nenhum dado para exportar.'); return; }
+    var csv = 'Data/Hora,Nome,Setor,Categoria,Turno,Acertos,Total,Percentual\n';
+    for (var i = 0; i < allResults.length; i++) {
+      var r = allResults[i];
+      csv += '"' + r.timestamp + '","' + r.nome + '","' + r.setor + '","' + r.categoria + '","' + r.turno + '",' + r.acertos + ',' + r.total + ',' + r.percentual + '\n';
+    }
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'quiz_identificacao_segura_' + new Date().toISOString().slice(0, 10) + '.csv';
+    link.click();
+  }
+</script>
+</body>
+</html>
